@@ -1,0 +1,58 @@
+Bonus Questions
+===============
+
+1. Three tasks that native SQL can do but JPQL makes hard or impossible
+-----------------------------------------------------------------------
+
+a) Window functions and analytic queries.
+   Ranking or running totals such as
+     SELECT name, district,
+            RANK() OVER (PARTITION BY district ORDER BY renewal_date DESC)
+     FROM member m JOIN division d ON m.division_id = d.id;
+   JPQL has no OVER/PARTITION BY clause (Hibernate's HQL added some support,
+   but standard JPQL does not have it), so you would have to load the rows
+   and compute the ranking in Java.
+
+b) Recursive queries (WITH RECURSIVE ...).
+   Walking a hierarchy of unknown depth, e.g. an employee -> manager chain or
+   a category tree, in a single query. JPQL has no common table expressions,
+   so the alternative is one query per level or loading the whole table.
+
+c) Vendor-specific features and DDL.
+   Things like MySQL's INSERT ... ON DUPLICATE KEY UPDATE (upsert),
+   PostgreSQL's JSONB operators or full-text search (MATCH ... AGAINST,
+   to_tsvector), database hints, stored procedures with vendor syntax, or
+   schema changes (CREATE INDEX, ALTER TABLE). JPQL only works on entities and
+   only covers SELECT, UPDATE and DELETE, so none of these can be expressed.
+
+Other examples: UNION/INTERSECT across unrelated tables, querying tables
+that have no mapped entity, and bulk INSERT ... SELECT between tables.
+
+
+2. Why you might prefer native SQL over JPQL in real-world projects
+-------------------------------------------------------------------
+
+- Performance: for reports and heavy reads you can write exactly the query
+  you want (specific joins, indexes, hints, aggregations) and check its plan
+  with EXPLAIN, instead of trusting the SQL that JPA generates. It also avoids
+  loading full entity graphs and N+1 problems when you only need a few columns.
+
+- Access to the database's full feature set: window functions, CTEs, JSON
+  columns, full-text search, upserts and other functionality that JPQL does
+  not expose.
+
+- Working with existing or shared databases: legacy schemas, views and
+  stored procedures that do not map cleanly to entities can be queried
+  directly.
+
+- Bulk operations: large updates, deletes or data migrations run in one
+  statement on the database server, without pulling every row into the
+  persistence context.
+
+- Familiarity and tooling: DBAs and analysts can read, test and tune plain
+  SQL in their own tools.
+
+The trade-off is portability and safety: native queries are tied to one
+database vendor, are not checked against the entity model, and return raw
+rows unless you map them. A common approach is to use JPQL/Spring Data for
+normal CRUD work and native SQL only for the queries that need it.
